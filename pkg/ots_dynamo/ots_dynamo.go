@@ -14,18 +14,18 @@ import (
 	"github.com/nckslvrmn/go_ots/pkg/utils"
 )
 
-var dynamoClient *dynamodb.Client
-
-func initDynamoDBClient() {
-	cfg, _ := config.LoadDefaultConfig(context.TODO(), config.WithRegion(utils.AWSRegion))
-	dynamoClient = dynamodb.NewFromConfig(cfg)
+type DynamoStore struct {
+	client *dynamodb.Client
 }
 
-func StoreSecret(s *simple_crypt.Secret) error {
-	if dynamoClient == nil {
-		initDynamoDBClient()
+func NewDynamoStore() *DynamoStore {
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), config.WithRegion(utils.AWSRegion))
+	return &DynamoStore{
+		client: dynamodb.NewFromConfig(cfg),
 	}
+}
 
+func (d *DynamoStore) StoreSecret(s *simple_crypt.Secret) error {
 	item := map[string]types.AttributeValue{
 		"secret_id":  &types.AttributeValueMemberS{Value: s.SecretId},
 		"view_count": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", s.ViewCount)},
@@ -34,10 +34,10 @@ func StoreSecret(s *simple_crypt.Secret) error {
 		"nonce":      &types.AttributeValueMemberS{Value: utils.B64E(s.Nonce)},
 		"salt":       &types.AttributeValueMemberS{Value: utils.B64E(s.Salt)},
 		"header":     &types.AttributeValueMemberS{Value: utils.B64E(s.Header)},
-		"ttl":        &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", time.Now().AddDate(0, 0, 7).Unix())},
+		"ttl":        &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", time.Now().AddDate(0, 0, utils.TTLDays).Unix())},
 	}
 
-	_, err := dynamoClient.PutItem(
+	_, err := d.client.PutItem(
 		context.TODO(),
 		&dynamodb.PutItemInput{
 			TableName: aws.String(utils.DynamoTable),
@@ -48,12 +48,8 @@ func StoreSecret(s *simple_crypt.Secret) error {
 	return err
 }
 
-func GetSecret(secretId string) (*simple_crypt.Secret, error) {
-	if dynamoClient == nil {
-		initDynamoDBClient()
-	}
-
-	result, _ := dynamoClient.GetItem(
+func (d *DynamoStore) GetSecret(secretId string) (*simple_crypt.Secret, error) {
+	result, _ := d.client.GetItem(
 		context.TODO(),
 		&dynamodb.GetItemInput{
 			TableName: aws.String(utils.DynamoTable),
@@ -98,12 +94,8 @@ func GetSecret(secretId string) (*simple_crypt.Secret, error) {
 	return secret, nil
 }
 
-func DeleteSecret(secretId string) error {
-	if dynamoClient == nil {
-		initDynamoDBClient()
-	}
-
-	_, err := dynamoClient.DeleteItem(
+func (d *DynamoStore) DeleteSecret(secretId string) error {
+	_, err := d.client.DeleteItem(
 		context.TODO(),
 		&dynamodb.DeleteItemInput{
 			TableName: aws.String(utils.DynamoTable),
@@ -115,12 +107,8 @@ func DeleteSecret(secretId string) error {
 	return err
 }
 
-func UpdateSecret(s *simple_crypt.Secret) error {
-	if dynamoClient == nil {
-		initDynamoDBClient()
-	}
-
-	_, err := dynamoClient.UpdateItem(
+func (d *DynamoStore) UpdateSecret(s *simple_crypt.Secret) error {
+	_, err := d.client.UpdateItem(
 		context.TODO(),
 		&dynamodb.UpdateItemInput{
 			TableName: aws.String(utils.DynamoTable),

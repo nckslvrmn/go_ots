@@ -8,6 +8,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/nckslvrmn/go_ots/pkg/routes"
+	"github.com/nckslvrmn/go_ots/pkg/storage"
 	"github.com/nckslvrmn/go_ots/pkg/utils"
 )
 
@@ -24,6 +25,11 @@ func main() {
 	e := echo.New()
 	err := utils.LoadEnv()
 	if err != nil {
+		e.Logger.Fatal(err)
+	}
+
+	// Initialize storage backend
+	if err := storage.Initialize(); err != nil {
 		e.Logger.Fatal(err)
 	}
 
@@ -49,7 +55,7 @@ func main() {
 	e.POST("/encrypt_file", routes.EncryptFile)
 	e.POST("/decrypt", routes.Decrypt)
 
-	e.Logger.Fatal(e.Start(":6666"))
+	e.Logger.Fatal(e.Start(":8081"))
 }
 
 func index(c echo.Context) error {

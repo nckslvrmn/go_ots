@@ -14,13 +14,25 @@ var S3Bucket string
 var TTLDays int
 var DynamoTable string
 var AWSRegion string
+var FirestoreProjectID string
+var FirestoreCollection string
+var GCSBucket string
+var UsesAWS bool
+var UsesGCP bool
 
 func LoadEnv() error {
 	// required ENV vars
 	S3Bucket = os.Getenv("S3_BUCKET")
 	DynamoTable = os.Getenv("DYNAMO_TABLE")
-	if S3Bucket == "" || DynamoTable == "" {
-		return fmt.Errorf("missing required ENV var")
+	FirestoreProjectID = os.Getenv("FIRESTORE_PROJECT_ID")
+	FirestoreCollection = os.Getenv("FIRESTORE_COLLECTION")
+	GCSBucket = os.Getenv("GCS_BUCKET")
+
+	// Check if either AWS or Google Cloud configuration is provided
+	UsesAWS = S3Bucket != "" && DynamoTable != ""
+	UsesGCP = FirestoreProjectID != "" && FirestoreCollection != "" && GCSBucket != ""
+	if !UsesAWS && !UsesGCP {
+		return fmt.Errorf("missing required ENV vars - must provide either AWS (S3_BUCKET + DYNAMO_TABLE) or Google Cloud (FIRESTORE_PROJECT_ID + FIRESTORE_COLLECTION + GCS_BUCKET) configuration")
 	}
 
 	// optional ENV vars

@@ -6,8 +6,7 @@ import (
 	"net/http"
 
 	echo "github.com/labstack/echo/v4"
-	"github.com/nckslvrmn/go_ots/pkg/ots_dynamo"
-	"github.com/nckslvrmn/go_ots/pkg/ots_s3"
+	"github.com/nckslvrmn/go_ots/pkg/storage"
 	"github.com/nckslvrmn/go_ots/pkg/utils"
 )
 
@@ -27,7 +26,8 @@ func Decrypt(c echo.Context) error {
 		return c.NoContent(http.StatusNotFound)
 	}
 
-	secret, err := ots_dynamo.GetSecret(decryptData.SecretId)
+	secretStore := storage.GetSecretStore()
+	secret, err := secretStore.GetSecret(decryptData.SecretId)
 	if err != nil {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusNotFound)
@@ -43,7 +43,8 @@ func Decrypt(c echo.Context) error {
 	var decryptedJson decryptedFile
 	if secret.IsFile {
 		json.Unmarshal(decrypted, &decryptedJson)
-		fileData, err := ots_s3.GetEncryptedFile(secret.SecretId)
+		fileStore := storage.GetFileStore()
+		fileData, err := fileStore.GetEncryptedFile(secret.SecretId)
 		if err != nil {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusNotFound)
@@ -58,14 +59,14 @@ func Decrypt(c echo.Context) error {
 			c.Logger().Error(err)
 			return c.NoContent(http.StatusNotFound)
 		}
-		ots_s3.DeleteEncryptedFile(secret.SecretId)
+		fileStore.DeleteEncryptedFile(secret.SecretId)
 	}
 
 	secret.ViewCount--
 	if secret.ViewCount <= 0 {
-		ots_dynamo.DeleteSecret(secret.SecretId)
+		secretStore.DeleteSecret(secret.SecretId)
 	} else {
-		ots_dynamo.UpdateSecret(secret)
+		secretStore.UpdateSecret(secret)
 	}
 
 	if secret.IsFile {

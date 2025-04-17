@@ -4,7 +4,7 @@ A secure, light-weight, and ephemeral secret sharing service. `go_ots` uses scry
 
 ## Dependencies
 
-`go_ots` requires golang 1.21 or greater and utilizes AWS DynamoDB and S3 for the storage of encrypted secrets.
+`go_ots` requires golang 1.21 or greater and utilizes either AWS DynamoDB and S3 or Google Cloud Firestore and Cloud Storage for the storage of encrypted secrets.
 
 ## Build
 
@@ -21,12 +21,25 @@ encryption/decryption have been baked into the code itself. There are a few
 options that can be configured. All of these should be passed in to the function
 via environment variables.
 
-| VARIABLE     | REQUIRED           | DESCRIPTION                                                          |
-| ------------ | :----------------: | -------------------------------------------------------------------- |
-| DYNAMO_TABLE | :white_check_mark: | Name of the dynamodb table in which to store secrets                 |
-| S3_BUCKET    | :white_check_mark: | Name of the S3 bucket in which to store encrypted files              |
-| TTL_DAYS     | :x:                | (default: 7) TTL in days of the secret. will auto-delete after this  |
-| AWS_REGION   | :x:                | (default: us-east-1) AWS region of the s3 bucket and dynamo db table |
+| VARIABLE             | REQUIRED           | DESCRIPTION                                                          |
+| ------------------- | :----------------: | -------------------------------------------------------------------- |
+| DYNAMO_TABLE        | :white_check_mark:*| Name of the dynamodb table in which to store secrets                 |
+| S3_BUCKET           | :white_check_mark:*| Name of the S3 bucket in which to store encrypted files              |
+| FIRESTORE_PROJECT_ID| :white_check_mark:*| Google Cloud project ID for Firestore                                |
+| FIRESTORE_COLLECTION| :white_check_mark:*| Name of the Firestore collection in which to store secrets           |
+| GCS_BUCKET          | :white_check_mark:*| Name of the Google Cloud Storage bucket for encrypted files          |
+| TTL_DAYS            | :x:                | (default: 7) TTL in days of the secret. will auto-delete after this  |
+| AWS_REGION          | :x:                | (default: us-east-1) AWS region of the s3 bucket and dynamo db table |
+
+*Note: You must configure either AWS (DYNAMO_TABLE + S3_BUCKET) or Google Cloud (FIRESTORE_PROJECT_ID + FIRESTORE_COLLECTION + GCS_BUCKET) environment variables depending on which storage backend you want to use.
+
+For Google Cloud services, you need to set up authentication:
+1. Set the GOOGLE_APPLICATION_CREDENTIALS environment variable to point to your service account key file, or
+2. Use Application Default Credentials if running in Google Cloud
+
+The service account or credentials used must have the following permissions:
+- Firestore: `datastore.user` role or equivalent custom role with read/write permissions
+- Cloud Storage: `storage.objectViewer` and `storage.objectCreator` roles or equivalent permissions
 
 ## API Usage
 

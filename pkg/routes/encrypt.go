@@ -6,9 +6,8 @@ import (
 	"net/http"
 
 	echo "github.com/labstack/echo/v4"
-	"github.com/nckslvrmn/go_ots/pkg/ots_dynamo"
-	"github.com/nckslvrmn/go_ots/pkg/ots_s3"
 	"github.com/nckslvrmn/go_ots/pkg/simple_crypt"
+	"github.com/nckslvrmn/go_ots/pkg/storage"
 	"github.com/nckslvrmn/go_ots/pkg/utils"
 )
 
@@ -61,7 +60,12 @@ func EncryptFile(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "error storing secret"})
 	}
-	ots_s3.StoreEncryptedFile(secret.SecretId, encrypted)
+
+	fileStore := storage.GetFileStore()
+	if err := fileStore.StoreEncryptedFile(secret.SecretId, encrypted); err != nil {
+		c.Logger().Error(err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "error storing secret"})
+	}
 
 	js, _ := json.Marshal(map[string]string{
 		"file_name": formFile.Filename,
@@ -77,7 +81,8 @@ func EncryptFile(c echo.Context) error {
 }
 
 func storeAndReturn(c echo.Context, secret *simple_crypt.Secret) error {
-	if err := ots_dynamo.StoreSecret(secret); err != nil {
+	secretStore := storage.GetSecretStore()
+	if err := secretStore.StoreSecret(secret); err != nil {
 		c.Logger().Error(err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "error storing secret"})
 	}

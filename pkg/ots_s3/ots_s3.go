@@ -13,19 +13,19 @@ import (
 	"github.com/nckslvrmn/go_ots/pkg/utils"
 )
 
-var s3Client *s3.Client
-
-func initS3Client() {
-	cfg, _ := config.LoadDefaultConfig(context.TODO(), config.WithRegion(utils.AWSRegion))
-	s3Client = s3.NewFromConfig(cfg)
+type S3Store struct {
+	client *s3.Client
 }
 
-func StoreEncryptedFile(secret_id string, data []byte) error {
-	if s3Client == nil {
-		initS3Client()
+func NewS3Store() *S3Store {
+	cfg, _ := config.LoadDefaultConfig(context.TODO(), config.WithRegion(utils.AWSRegion))
+	return &S3Store{
+		client: s3.NewFromConfig(cfg),
 	}
+}
 
-	_, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+func (s *S3Store) StoreEncryptedFile(secret_id string, data []byte) error {
+	_, err := s.client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:               aws.String(utils.S3Bucket),
 		Key:                  aws.String(secret_id + ".enc"),
 		Body:                 strings.NewReader(utils.B64E(data)),
@@ -39,12 +39,8 @@ func StoreEncryptedFile(secret_id string, data []byte) error {
 	return nil
 }
 
-func GetEncryptedFile(secret_id string) ([]byte, error) {
-	if s3Client == nil {
-		initS3Client()
-	}
-
-	getObjectOutput, err := s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
+func (s *S3Store) GetEncryptedFile(secret_id string) ([]byte, error) {
+	getObjectOutput, err := s.client.GetObject(context.TODO(), &s3.GetObjectInput{
 		Bucket: aws.String(utils.S3Bucket),
 		Key:    aws.String(secret_id + ".enc"),
 	})
@@ -62,11 +58,8 @@ func GetEncryptedFile(secret_id string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func DeleteEncryptedFile(secret_id string) error {
-	if s3Client == nil {
-		initS3Client()
-	}
-	_, err := s3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+func (s *S3Store) DeleteEncryptedFile(secret_id string) error {
+	_, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
 		Bucket: aws.String(utils.S3Bucket),
 		Key:    aws.String(secret_id + ".enc"),
 	})
