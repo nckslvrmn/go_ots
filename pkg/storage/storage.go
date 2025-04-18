@@ -40,7 +40,7 @@ func Initialize() error {
 
 	// Check if Google Cloud configuration is provided
 	if utils.UsesGCP {
-		secretStore = ots_firestore.NewFirestoreStore()
+		secretStore, _ = ots_firestore.NewFirestoreStore()
 		fileStore = ots_gcs.NewGCSStore()
 		return nil
 	}

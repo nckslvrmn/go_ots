@@ -55,7 +55,7 @@ func main() {
 	e.POST("/encrypt_file", routes.EncryptFile)
 	e.POST("/decrypt", routes.Decrypt)
 
-	e.Logger.Fatal(e.Start(":6666"))
+	e.Logger.Fatal(e.Start(":8081"))
 }
 
 func index(c echo.Context) error {

@@ -4,35 +4,33 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"math"
 	"math/big"
 	"os"
 	"strconv"
 )
 
+var AWSRegion string
+var DynamoTable string
+var FirestoreDatabase string
+var GCPProjectID string
+var GCSBucket string
 var S3Bucket string
 var TTLDays int
-var DynamoTable string
-var AWSRegion string
-var FirestoreProjectID string
-var FirestoreCollection string
-var GCSBucket string
 var UsesAWS bool
 var UsesGCP bool
 
 func LoadEnv() error {
-	// required ENV vars
-	S3Bucket = os.Getenv("S3_BUCKET")
 	DynamoTable = os.Getenv("DYNAMO_TABLE")
-	FirestoreProjectID = os.Getenv("FIRESTORE_PROJECT_ID")
-	FirestoreCollection = os.Getenv("FIRESTORE_COLLECTION")
-	GCSBucket = os.Getenv("GCS_BUCKET")
-
-	// Check if either AWS or Google Cloud configuration is provided
+	S3Bucket = os.Getenv("S3_BUCKET")
 	UsesAWS = S3Bucket != "" && DynamoTable != ""
-	UsesGCP = FirestoreProjectID != "" && FirestoreCollection != "" && GCSBucket != ""
+
+	FirestoreDatabase = os.Getenv("FIRESTORE_DATABASE")
+	GCPProjectID = os.Getenv("GCP_PROJECT_ID")
+	GCSBucket = os.Getenv("GCS_BUCKET")
+	UsesGCP = GCPProjectID != "" && FirestoreDatabase != "" && GCSBucket != ""
+
 	if !UsesAWS && !UsesGCP {
-		return fmt.Errorf("missing required ENV vars - must provide either AWS (S3_BUCKET + DYNAMO_TABLE) or Google Cloud (FIRESTORE_PROJECT_ID + FIRESTORE_COLLECTION + GCS_BUCKET) configuration")
+		return fmt.Errorf("missing required ENV vars - must provide either AWS (S3_BUCKET + DYNAMO_TABLE) or Google Cloud (GCP_PROJECT_ID + FIRESTORE_DATABASE + GCS_BUCKET) configuration")
 	}
 
 	// optional ENV vars
@@ -50,24 +48,19 @@ func LoadEnv() error {
 
 func SanitizeViewCount(view_count string) int {
 	vc, err := strconv.ParseFloat(view_count, 64)
-	if err != nil {
+	if err != nil || vc <= 0 || vc >= 10 {
 		return 1
 	}
-	vc = math.Abs(vc)
-
-	if vc > 0 && vc < 10 {
-		return int(vc)
-	}
-	return 1
+	return int(vc)
 }
 
 func RandString(length int, url_safe bool) string {
 	chars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	if url_safe == false {
+	if !url_safe {
 		chars = chars + "!#$%&*+-=?@_~"
 	}
 	result := make([]byte, length)
-	for i := 0; i < length; i++ {
+	for i := range result {
 		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
 		result[i] = chars[num.Int64()]
 	}

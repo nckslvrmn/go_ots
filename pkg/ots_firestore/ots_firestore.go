@@ -8,7 +8,6 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/nckslvrmn/go_ots/pkg/simple_crypt"
 	"github.com/nckslvrmn/go_ots/pkg/utils"
-	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -17,16 +16,15 @@ type FirestoreStore struct {
 	client *firestore.Client
 }
 
-func NewFirestoreStore() *FirestoreStore {
-	ctx := context.Background()
-	client, err := firestore.NewClient(ctx, utils.FirestoreProjectID, option.WithScopes("https://www.googleapis.com/auth/cloud-platform"))
+func NewFirestoreStore() (*FirestoreStore, error) {
+	client, err := firestore.NewClientWithDatabase(context.Background(), utils.GCPProjectID, utils.FirestoreDatabase)
 	if err != nil {
-		// In a real application, we would handle this error more gracefully
-		panic(fmt.Sprintf("failed to create Firestore client: %v", err))
+		return nil, fmt.Errorf("failed to create firestore client: %v", err)
 	}
+
 	return &FirestoreStore{
 		client: client,
-	}
+	}, nil
 }
 
 func (f *FirestoreStore) StoreSecret(s *simple_crypt.Secret) error {
@@ -44,7 +42,7 @@ func (f *FirestoreStore) StoreSecret(s *simple_crypt.Secret) error {
 	}
 
 	// Store in Firestore using secret_id as document ID
-	_, err := f.client.Collection(utils.FirestoreCollection).Doc(s.SecretId).Set(ctx, secretData)
+	_, err := f.client.Collection(utils.FirestoreDatabase).Doc(s.SecretId).Set(ctx, secretData)
 	if err != nil {
 		return fmt.Errorf("failed to store secret in Firestore: %w", err)
 	}
@@ -56,7 +54,7 @@ func (f *FirestoreStore) GetSecret(secretId string) (*simple_crypt.Secret, error
 	ctx := context.Background()
 
 	// Get document from Firestore
-	doc, err := f.client.Collection(utils.FirestoreCollection).Doc(secretId).Get(ctx)
+	doc, err := f.client.Collection(utils.FirestoreDatabase).Doc(secretId).Get(ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return nil, fmt.Errorf("secret not found")
@@ -115,7 +113,7 @@ func (f *FirestoreStore) DeleteSecret(secretId string) error {
 	ctx := context.Background()
 
 	// Delete document from Firestore
-	_, err := f.client.Collection(utils.FirestoreCollection).Doc(secretId).Delete(ctx)
+	_, err := f.client.Collection(utils.FirestoreDatabase).Doc(secretId).Delete(ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return nil // Document already deleted or doesn't exist
@@ -130,7 +128,7 @@ func (f *FirestoreStore) UpdateSecret(s *simple_crypt.Secret) error {
 	ctx := context.Background()
 
 	// Update only the view_count field
-	_, err := f.client.Collection(utils.FirestoreCollection).Doc(s.SecretId).Update(ctx, []firestore.Update{
+	_, err := f.client.Collection(utils.FirestoreDatabase).Doc(s.SecretId).Update(ctx, []firestore.Update{
 		{
 			Path:  "view_count",
 			Value: s.ViewCount,
